@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
 
 type Role = "user" | "assistant";
