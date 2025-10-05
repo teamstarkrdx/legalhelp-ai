@@ -11,6 +11,7 @@ type ChatMessage = {
   timestamp: number;
 };
 
+// --- (Your data arrays remain unchanged) ---
 const RIGHTS = [
   { title: "Right to Equality (Article 14)", detail: "All persons are equal before the law and entitled to equal protection of the laws." },
   { title: "Right to Freedom of Speech (Article 19(1)(a))", detail: "Freedom of speech and expression with reasonable restrictions." },
@@ -52,6 +53,7 @@ const LAW_DB = [
   }
 ];
 
+// --- (Your functions remain unchanged) ---
 function detectLawQuery(text: string) {
   const lower = text.toLowerCase();
   const ipcMatch = lower.match(/\bipc\s*([0-9]{1,3})\b/);
@@ -150,16 +152,17 @@ export default function LegalHelpAI() {
     setSending(false);
   };
 
+  // --- CORRECTED & COMPLETED JSX BELOW ---
   return (
     <div className={`min-h-screen ${darkMode ? "dark bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
-      <nav className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b p-4 z-40">
+      <nav className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-700 p-4 z-40">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold text-blue-600">LegalHelp AI</h1>
           <div className="flex gap-2">
-            <button onClick={() => setRightsOpen(true)} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            <button onClick={() => setRightsOpen(true)} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
               My Rights
             </button>
-            <button onClick={() => setDarkMode(!darkMode)} className="px-3 py-2 border rounded">
+            <button onClick={() => setDarkMode(!darkMode)} className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded">
               {darkMode ? "☀️" : "🌙"}
             </button>
           </div>
@@ -168,4 +171,99 @@ export default function LegalHelpAI() {
 
       <section className="max-w-6xl mx-auto px-4 py-12 text-center">
         <h2 className="text-4xl font-bold mb-4 text-blue-600">Know Your Legal Rights</h2>
-        <p className
+        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+          Use our AI assistant to understand complex legal topics and your fundamental rights in India.
+        </p>
+      </section>
+
+      {/* --- ADDED CHAT INTERFACE --- */}
+      <AnimatePresence>
+        {chatOpen && (
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            className="fixed bottom-4 right-4 w-[90vw] max-w-md h-[70vh] bg-white dark:bg-gray-800 shadow-2xl rounded-lg flex flex-col border border-gray-200 dark:border-gray-700"
+          >
+            <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+              <h3 className="font-bold">Legal Assistant</h3>
+              <button onClick={() => setChatOpen(false)} className="text-gray-500 dark:text-gray-400">&times;</button>
+            </div>
+            {!language ? (
+              <div className="flex-1 flex flex-col justify-center items-center gap-4 p-4">
+                <p className="font-semibold">Select a Language</p>
+                <button onClick={() => setLanguage("en")} className="w-full py-2 bg-blue-500 text-white rounded">English</button>
+                <button onClick={() => setLanguage("hi")} className="w-full py-2 bg-green-500 text-white rounded">हिंदी (Hindi)</button>
+              </div>
+            ) : (
+              <>
+                <div ref={chatRef} className="flex-1 p-4 overflow-y-auto space-y-4">
+                  {messages.map((msg) => (
+                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] p-3 rounded-lg whitespace-pre-wrap ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                  {sending && <div className="flex justify-start"><div className="p-3 rounded-lg bg-gray-200 dark:bg-gray-700">...</div></div>}
+                </div>
+                <div className="p-4 border-t dark:border-gray-700">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                      placeholder="Ask a question..."
+                      className="flex-1 p-2 border rounded bg-transparent dark:border-gray-600"
+                      disabled={sending}
+                    />
+                    <button onClick={sendMessage} disabled={sending || !input.trim()} className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-400">
+                      Send
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- ADDED RIGHTS MODAL --- */}
+      <AnimatePresence>
+        {rightsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setRightsOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h3 className="font-bold text-lg">Know Your Rights</h3>
+                <button onClick={() => setRightsOpen(false)} className="text-gray-500 dark:text-gray-400 text-2xl">&times;</button>
+              </div>
+              <div className="flex-1 p-6 overflow-y-auto">
+                <ul className="space-y-4">
+                  {RIGHTS.map(right => (
+                    <li key={right.title}>
+                      <p className="font-bold text-blue-500">{right.title}</p>
+                      <p className="text-gray-600 dark:text-gray-300">{right.detail}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
