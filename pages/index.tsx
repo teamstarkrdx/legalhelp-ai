@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from "react";
-
 import { motion, AnimatePresence } from "framer-motion";
 
 type Role = "user" | "assistant";
@@ -12,7 +11,6 @@ type ChatMessage = {
   timestamp: number;
 };
 
-// --- (Your data arrays remain unchanged) ---
 const RIGHTS = [
   { title: "Right to Equality (Article 14)", detail: "All persons are equal before the law and entitled to equal protection of the laws." },
   { title: "Right to Freedom of Speech (Article 19(1)(a))", detail: "Freedom of speech and expression with reasonable restrictions." },
@@ -21,19 +19,6 @@ const RIGHTS = [
   { title: "Right to Freedom of Religion (Article 25-28)", detail: "Freedom to profess, practice and propagate religion." },
   { title: "Cultural & Educational Rights (Article 29-30)", detail: "Protects interests of minorities to conserve culture and establish institutions." },
   { title: "Right to Constitutional Remedies (Article 32)", detail: "Right to approach the Supreme Court for enforcement of fundamental rights." },
-  { title: "Right to Education (Article 21A)", detail: "Free and compulsory education for children aged 6 to 14 years." },
-  { title: "Right to Information (RTI Act, 2005)", detail: "Citizens can request information from public authorities." },
-  { title: "Right to Privacy", detail: "Recognized as a fundamental right under Article 21 (Puttaswamy judgment)." },
-  { title: "Right of Arrested Persons (Article 22)", detail: "Right to be informed of grounds of arrest and to consult a lawyer." },
-  { title: "Right against Self-Incrimination (Article 20(3))", detail: "No person accused of an offense shall be compelled to be a witness against themselves." },
-  { title: "Right to Bail (CrPC)", detail: "Bailable offenses allow bail as a matter of right; non-bailable at court's discretion." },
-  { title: "Right to Lodge an FIR", detail: "Police must register an FIR for cognizable offenses." },
-  { title: "Right to Legal Aid", detail: "Free legal aid for eligible persons under Legal Services Authorities Act." },
-  { title: "Consumer Rights", detail: "Protection from defective goods/deficient services and right to redressal." },
-  { title: "Workplace Harassment (POSH Act)", detail: "Right to a safe workplace and complaint redressal mechanism." },
-  { title: "Domestic Violence (PWDVA, 2005)", detail: "Protection from abuse and access to protection orders/shelter." },
-  { title: "Senior Citizens' Rights", detail: "Maintenance and welfare under the Senior Citizens Act." },
-  { title: "Children's Rights (JJ Act)", detail: "Protection, care, and adoption under Juvenile Justice framework." },
 ];
 
 const LAW_DB = [
@@ -54,7 +39,6 @@ const LAW_DB = [
   }
 ];
 
-// --- (Your functions remain unchanged) ---
 function detectLawQuery(text: string) {
   const lower = text.toLowerCase();
   const ipcMatch = lower.match(/\bipc\s*([0-9]{1,3})\b/);
@@ -153,7 +137,6 @@ export default function LegalHelpAI() {
     setSending(false);
   };
 
-  // --- CORRECTED & COMPLETED JSX BELOW ---
   return (
     <div className={`min-h-screen ${darkMode ? "dark bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
       <nav className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-700 p-4 z-40">
@@ -177,7 +160,6 @@ export default function LegalHelpAI() {
         </p>
       </section>
 
-      {/* --- ADDED CHAT INTERFACE --- */}
       <AnimatePresence>
         {chatOpen && (
           <motion.div
@@ -230,7 +212,6 @@ export default function LegalHelpAI() {
         )}
       </AnimatePresence>
 
-      {/* --- ADDED RIGHTS MODAL --- */}
       <AnimatePresence>
         {rightsOpen && (
           <motion.div
@@ -267,4 +248,5 @@ export default function LegalHelpAI() {
       </AnimatePresence>
     </div>
   );
-}
+  }
+                
