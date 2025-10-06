@@ -406,6 +406,7 @@ export default function LegalHelpAI() {
           </div>
         </div>
       </section>
+      
       {/* Contact Section */}
       <section id="contact" className="bg-gray-50 dark:bg-gray-800 py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
@@ -429,6 +430,7 @@ export default function LegalHelpAI() {
           </p>
         </div>
       </section>
+      
       {/* Enhanced Rights Modal */}
       <AnimatePresence>
         {rightsOpen && (
@@ -510,6 +512,7 @@ export default function LegalHelpAI() {
           </motion.div>
         )}
       </AnimatePresence>
+      
       {/* Enhanced Chatbot */}
       <AnimatePresence>
         {chatOpen && (
@@ -527,9 +530,10 @@ export default function LegalHelpAI() {
                 <h4 className="font-semibold">LegalHelp AI</h4>
               </div>
               <button onClick={() => setChatOpen(false)} className="text-white hover:bg-white/20 rounded p-1">
-                ←
+                ✕
               </button>
             </div>
+            
             {!language && (
               <div className="p-4 border-b bg-blue-50 dark:bg-blue-900">
                 <p className="mb-3 font-medium">Choose your language:</p>
@@ -543,11 +547,11 @@ export default function LegalHelpAI() {
                 </div>
               </div>
             )}
+            
             <div ref={chatRef} className="h-80 overflow-y-auto p-4 space-y-3">
               <div className="text-xs bg-blue-50 dark:bg-blue-900 p-3 rounded-lg">
                 💡 <strong>Try:</strong> "What are my rights if police stop me?" or "IPC 420"
               </div>
-              
               {messages.map(msg => (
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[80%] p-3 rounded-lg ${
@@ -573,20 +577,13 @@ export default function LegalHelpAI() {
               )}
             </div>
             <div className="p-4 border-t">
+              {/* **FIXED: Removed the duplicate set of buttons here** */}
               <div className="flex gap-2 mb-2">
                 <button onClick={() => setMessages([])} className="text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600">
-                  Clear
+                  Clear Chat
                 </button>
                 <button onClick={() => setLanguage(null)} className="text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600">
-                  Language
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setMessages([])} className="text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600">
-                  Clear
-                </button>
-                <button onClick={() => setLanguage(null)} className="text-xs px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600">
-                  Language
+                  Change Language
                 </button>
               </div>
               <div className="flex gap-2">
@@ -605,7 +602,7 @@ export default function LegalHelpAI() {
                 />
                 <button 
                   onClick={sendMessage}
-                  disabled={sending || !language}
+                  disabled={sending || !language || !input.trim()}
                   className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 hover:bg-blue-600"
                 >
                   Send
@@ -615,6 +612,7 @@ export default function LegalHelpAI() {
           </motion.div>
         )}
       </AnimatePresence>
+      
       {/* Transparent Robot Chatbot Icon */}
       {!chatOpen && (
         <button 
@@ -627,6 +625,7 @@ export default function LegalHelpAI() {
           </div>
         </button>
       )}
+      
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-8">
         <div className="max-w-6xl mx-auto px-4 text-center">
@@ -640,4 +639,9 @@ export default function LegalHelpAI() {
             <span>Educational Use Only</span>
             <span>•</span>
             <span>Made in India 🇮🇳</span>
-            
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
