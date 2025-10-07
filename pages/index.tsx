@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 type Role = "user" | "assistant";
 type Language = "en" | "hi" | "ta" | "te" | "bn" | "mr" | "kn" | "gu" | "or" | "ml" | "pa";
@@ -185,14 +186,13 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 // Animated Background Component
-function AnimatedBackground() {
+function AnimatedBackground() { // <--- Starts here
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // If we are on the server, return nothing. The animation will appear on the client.
   if (!isClient) {
     return null;
   }
@@ -220,11 +220,15 @@ function AnimatedBackground() {
             }}
           />
         ))}
-        {/* You can keep your Geometric Shapes div here if you have one */}
+        
+        {/* Your Geometric Shapes can go here if you had them before */}
+        <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-full" />
+        <div className="absolute bottom-20 right-20 w-48 h-48 bg-gradient-to-r from-pink-400/10 to-blue-400/10 rounded-full" />
+
       </div>
     </div>
   );
-}
+} // <--- The missing brace is likely this one!
 
       
       {/* Geometric shapes */}
