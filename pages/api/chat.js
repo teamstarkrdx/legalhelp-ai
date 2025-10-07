@@ -1,102 +1,95 @@
 import OpenAI from "openai";
 
+// Initialize the OpenAI client outside the handler to reuse the connection
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 export default async function handler(req, res) {
+  // --- 1. Method Validation ---
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  try {
-    const { messages, language, query } = req.body || {};
-    if (!Array.isArray(messages) || !language) {
-      return res.status(400).json({ error: "Invalid payload" });
-    }
+  // --- 2. Payload Validation ---
+  const { messages, language, query } = req.body;
 
+  if (!query || typeof query !== 'string' || query.trim() === '') {
+    return res.status(400).json({ error: "A valid 'query' string is required." });
+  }
+  if (!language || typeof language !== 'string') {
+    return res.status(400).json({ error: "A valid 'language' string is required." });
+  }
+  if (!Array.isArray(messages)) {
+     return res.status(400).json({ error: "'messages' must be an array." });
+  }
+
+  try {
+    // --- 3. System Prompt and Language Instructions ---
     const languageInstructions = {
-      en: "Always respond in English. Keep answers clear and simple.",
-      hi: "हमेशा हिंदी में जवाब दें। उत्तर स्पष्ट और सरल रखें।",
-      ta: "எப்போதும் தமிழில் பதில் சொல்லுங்கள்। பதில்கள் தெளிவாகவும் எளிமையாகவும் இருக்க வேண்டும்।",
-      te: "ఎల్లప్పుడూ తెలుగులో జవాబు చెప్పండి। జవాబులు స్పష్టంగా మరియు సరళంగా ఉంచండి।",
-      bn: "সর্বদা বাংলায় উত্তর দিন। উত্তরগুলো স্পষ্ট এবং সহজ রাখুন।",
-      mr: "नेहमी मराठीत उत्तर द्या. उत्तरे स्पष्ट आणि सोपी ठेवा.",
-      kn: "ಯಾವಾಗಲೂ ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಿ. ಉತ್ತರಗಳು ಸ್ಪಷ್ಟ ಮತ್ತು ಸರಳವಾಗಿರಲಿ.",
-      gu: "હંમેશા ગુજરાતીમાં જવાબ આપો. જવાબો સ્પષ્ટ અને સરળ રાખો.",
-      or: "ସର୍ବଦା ଓଡ଼ିଆରେ ଉତ୍ତର ଦିଅନ୍ତୁ। ଉତ୍ତରଗୁଡ଼ିକ ସ୍ପଷ୍ଟ ଏବଂ ସରଳ ରଖନ୍ତୁ।",
-      ml: "എപ്പോഴും മലയാളത്തിൽ മറുപടി പറയുക. ഉത്തരങ്ങൾ വ്യക്തവും ലളിതവുമായി സൂക്ഷിക്കുക.",
-      pa: "ਹਮੇਸ਼ਾ ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਓ। ਜਵਾਬਾਂ ਨੂੰ ਸਪਸ਼ਟ ਅਤੇ ਸਰਲ ਰੱਖੋ।"
+      en: "You must always respond in English.",
+      hi: "आपको हमेशा हिंदी में ही जवाब देना होगा।",
+      ta: "நீங்கள் எப்போதும் தமிழில்தான் பதிலளிக்க வேண்டும்.",
+      te: "మీరు ఎల్లప్పుడూ తెలుగులోనే జవాబు చెప్పాలి.",
+      bn: "আপনাকে অবশ্যই সর্বদা বাংলায় উত্তর দিতে হবে।",
+      mr: "तुम्हाला नेहमी मराठीतच उत्तर द्यावे लागेल.",
+      kn: "ನೀವು ಯಾವಾಗಲೂ ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಬೇಕು.",
+      // Add other languages as needed
     };
 
-    // Enhanced system prompt with comprehensive legal analysis
-    const systemPrompt = `You are a Comprehensive AI Legal Advisor for Indian citizens. Your goal is to deliver a structured legal analysis that is both quick to read and deeply informative.
+    const systemPrompt = `You are a Comprehensive AI Legal Advisor for Indian citizens. Your primary goal is to provide structured, accurate, and easy-to-understand legal analysis based on Indian law.
 
-CRITICAL: When a user describes a legal situation, you must respond using this exact three-part format:
+CRITICAL INSTRUCTION: When a user describes a legal situation or problem, you MUST respond using this exact three-part format:
 
 **Part 1: At-a-Glance Summary**
-> Case Type: [Criminal / Civil / Constitutional / Family]
-> Severity: [Low / Medium / High]
-> Applicable Law: [Sec #, Law Name (Offense Name)]
-> Outcome/Punishment: [Brief result, e.g., "Return of funds + damages" or "Up to X years jail + Fine"]
+> **Case Type:** [Criminal / Civil / Constitutional / Family / Other]
+> **Severity:** [Low / Medium / High]
+> **Primary Law/Section:** [e.g., IPC Section 420 (Cheating)]
+> **Potential Outcome:** [e.g., "Up to 7 years imprisonment + Fine"]
 
 **Part 2: Detailed Analysis**
-Provide a comprehensive paragraph explaining the legal situation. In this narrative, you must naturally integrate and **bold** the following details:
-- The full name of the law (e.g., **The Indian Penal Code, 1860**)
-- The specific **Section or Article number**
-- The legal name of the **offense or principle**
-- The potential **Jail Term and/or Penalty**
-End with a clear statement: "This action is [illegal/legal] and [legal action can be taken/no legal violation exists]."
+Provide a comprehensive paragraph explaining the legal situation. In this narrative, you must naturally integrate and **bold** the following:
+- The full name of the law (e.g., **The Indian Penal Code, 1860**).
+- The specific **Section or Article number**.
+- The legal name of the **offense or principle**.
+- The potential **Jail Term and/or Monetary Penalty**.
+Conclude with a clear statement: "This action is illegal and legal action can be taken." or a similar definitive summary.
 
 **Part 3: Recommended First Steps**
-Provide a numbered list of the most important actions the user should take.
+Provide a numbered list of the most crucial and immediate actions the user should take. Keep it simple and actionable.
 
-**SPECIAL INSTRUCTIONS:**
-- If asked about specific legal sections (IPC, Article, CrPC), provide comprehensive details with punishments
-- Include recent legal updates and amendments when relevant
-- For complex queries, search for current legal information and cite sources
-- Always be accurate with Indian law - double-check facts
+**GENERAL INSTRUCTIONS:**
 - ${languageInstructions[language] || languageInstructions.en}
-- Always conclude with: "Disclaimer: This is for informational purposes only. Please consult with a qualified lawyer for professional legal advice."
+- If asked for definitions or explanations of a law (not a situation), provide a clear, detailed explanation without using the three-part format.
+- Always conclude every response with: "Disclaimer: This is for informational purposes only and not a substitute for professional legal advice. Consult with a qualified lawyer."`;
 
-**For general legal information requests:** Provide detailed, structured information about Indian laws, rights, procedures, and legal remedies.`;
-
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    // Enhanced prompt for comprehensive legal search
+    // --- 4. Message Construction ---
+    // Start with the system prompt, add the conversation history, and end with the user's latest query.
     const enhancedMessages = [
       { role: "system", content: systemPrompt },
-      ...messages.map(m => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
-      })),
+      ...messages, // Previous conversation history
+      { role: "user", content: query } // The user's new question
     ];
 
-    // If the query seems to require current information, add that context
-    if (query && (
-      query.includes("latest") || 
-      query.includes("recent") || 
-      query.includes("current") || 
-      query.includes("2024") || 
-      query.includes("amendment")
-    )) {
-      enhancedMessages.push({
-        role: "system",
-        content: "The user is asking for current/recent information. Please provide the most up-to-date legal information available in your knowledge base and mention if professional consultation is needed for the very latest updates."
-      });
-    }
-
+    // --- 5. OpenAI API Call ---
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.2,
-      max_tokens: 1000,
       messages: enhancedMessages,
+      temperature: 0.3, // Slightly increased for better nuance in legal text
+      max_tokens: 1500, // Increased for more comprehensive answers
     });
 
-    const reply =
-      completion?.choices?.[0]?.message?.content ||
-      "Sorry, I could not generate a response right now.";
+    const reply = completion.choices[0]?.message?.content?.trim() || "Sorry, I could not generate a response. Please try again.";
     
     return res.status(200).json({ reply });
+
   } catch (err) {
-    console.error("OpenAI error:", err);
-    return res.status(500).json({ error: "Server error" });
+    console.error("API Route Error:", err);
+    // More specific error handling
+    if (err instanceof OpenAI.APIError) {
+        return res.status(err.status || 500).json({ error: `OpenAI Error: ${err.name}` });
+    }
+    return res.status(500).json({ error: "An unexpected error occurred on the server." });
   }
 }
