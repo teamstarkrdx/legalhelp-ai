@@ -15,8 +15,8 @@ export default async function handler(req, res) {
     const languageInstructions = {
       en: "Always respond in English. Keep answers clear and simple.",
       hi: "हमेशा हिंदी में जवाब दें। उत्तर स्पष्ट और सरल रखें।",
-      ta: "எப்போதும் தமிழில் பதில் சொல்லுங்கள்। பதில்கள் தெளிவாகவும் எளிமையாகவும் இருக்க வேண்டும்।",
-      te: "ఎల్లప్పుడూ తెలుగులో జవాబు చెప్పండి। జవాబులు స్పష్టంగా మరియు సరళంగా ఉంచండి।",
+      ta: "எப்போதும் தமிழில் பதில் சொல்லுங்கள். பதில்கள் தெளிவாகவும் எளிமையாகவும் இருக்க வேண்டும்.",
+      te: "ఎల్లప్పుడూ తెలుగులో జవాబు చెప్పండి. జవాబులు స్పష్టంగా మరియు సరళంగా ఉంచండి.",
       bn: "সর্বদা বাংলায় উত্তর দিন। উত্তরগুলো স্পষ্ট এবং সহজ রাখুন।",
       mr: "नेहमी मराठीत उत्तर द्या. उत्तरे स्पष्ट आणि सोपी ठेवा.",
       kn: "ಯಾವಾಗಲೂ ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಿ. ಉತ್ತರಗಳು ಸ್ಪಷ್ಟ ಮತ್ತು ಸರಳವಾಗಿರಲಿ.",
@@ -26,7 +26,6 @@ export default async function handler(req, res) {
       pa: "ਹਮੇਸ਼ਾ ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਓ। ਜਵਾਬਾਂ ਨੂੰ ਸਪਸ਼ਟ ਅਤੇ ਸਰਲ ਰੱਖੋ।"
     };
 
-    // Enhanced system prompt with comprehensive legal analysis
     const systemPrompt = `You are a Comprehensive AI Legal Advisor for Indian citizens. Your goal is to deliver a structured legal analysis that is both quick to read and deeply informative.
 
 CRITICAL: When a user describes a legal situation, you must respond using this exact three-part format:
@@ -58,28 +57,30 @@ Provide a numbered list of the most important actions the user should take.
 
 **For general legal information requests:** Provide detailed, structured information about Indian laws, rights, procedures, and legal remedies.`;
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
 
-    // Enhanced prompt for comprehensive legal search
     const enhancedMessages = [
       { role: "system", content: systemPrompt },
-      ...messages.map(m => ({
+      ...messages.map((m) => ({
         role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
-      })),
+        content: m.content
+      }))
     ];
 
-    // If the query seems to require current information, add that context
-    if (query && (
-      query.includes("latest") || 
-      query.includes("recent") || 
-      query.includes("current") || 
-      query.includes("2024") || 
-      query.includes("amendment")
-    )) {
+    if (
+      query &&
+      (query.includes("latest") ||
+        query.includes("recent") ||
+        query.includes("current") ||
+        query.includes("2024") ||
+        query.includes("amendment"))
+    ) {
       enhancedMessages.push({
         role: "system",
-        content: "The user is asking for current/recent information. Please provide the most up-to-date legal information available in your knowledge base and mention if professional consultation is needed for the very latest updates."
+        content:
+          "The user is asking for current/recent information. Please provide the most up-to-date legal information available in your knowledge base and mention if professional consultation is needed for the very latest updates."
       });
     }
 
@@ -87,13 +88,13 @@ Provide a numbered list of the most important actions the user should take.
       model: "gpt-4o-mini",
       temperature: 0.2,
       max_tokens: 1000,
-      messages: enhancedMessages,
+      messages: enhancedMessages
     });
 
     const reply =
       completion?.choices?.[0]?.message?.content ||
       "Sorry, I could not generate a response right now.";
-    
+
     return res.status(200).json({ reply });
   } catch (err) {
     console.error("OpenAI error:", err);
