@@ -1,25 +1,25 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Role = "user" | "assistant";
 type Language = "en" | "hi" | "ta" | "te" | "bn" | "mr" | "kn" | "gu" | "or" | "ml" | "pa";
 
-type ChatMessage = {
+interface ChatMessage {
   id: string;
   role: Role;
   content: string;
   timestamp: number;
   rating?: number;
   feedback?: string;
-};
+}
 
-type Review = {
+interface Review {
   id: string;
   rating: number;
   comment: string;
   userName: string;
   timestamp: number;
-};
+}
 
 const ENHANCED_RIGHTS = [
   { title: "Right to Equality (Article 14)", detail: "All persons are equal before the law and entitled to equal protection of the laws.", category: "Constitutional", icon: "⚖️", rating: 5 },
@@ -54,30 +54,6 @@ const ENHANCED_RIGHTS = [
   { title: "Right to Livelihood (Article 21)", detail: "Right to means of earning a livelihood.", category: "Constitutional", icon: "💼", rating: 4 }
 ];
 
-// Comprehensive Indian Law Database
-const COMPREHensive_LAW_DB = [
-  { key: "ipc-302", title: "IPC 302 — Murder", summary: "Punishment for murder with life imprisonment or death penalty", category: "Criminal" },
-  { key: "ipc-307", title: "IPC 307 — Attempt to Murder", summary: "Punishment for attempt to commit murder - up to 10 years imprisonment", category: "Criminal" },
-  { key: "ipc-376", title: "IPC 376 — Rape", summary: "Punishment for rape - minimum 7 years to life imprisonment", category: "Criminal" },
-  { key: "ipc-420", title: "IPC 420 — Cheating", summary: "Punishment for cheating - up to 7 years imprisonment and fine", category: "Criminal" },
-  { key: "ipc-498a", title: "IPC 498A — Dowry Harassment", summary: "Punishment for subjecting woman to cruelty - up to 3 years imprisonment", category: "Criminal" },
-  { key: "ipc-354", title: "IPC 354 — Assault on Woman", summary: "Assault or use of criminal force on woman - up to 2 years imprisonment", category: "Criminal" },
-  { key: "ipc-379", title: "IPC 379 — Theft", summary: "Punishment for theft - up to 3 years imprisonment or fine", category: "Criminal" },
-  { key: "ipc-406", title: "IPC 406 — Breach of Trust", summary: "Criminal breach of trust - up to 3 years imprisonment", category: "Criminal" },
-  { key: "article-12", title: "Article 12 — Definition of State", summary: "Defines 'State' for fundamental rights enforcement", category: "Constitutional" },
-  { key: "article-13", title: "Article 13 — Laws Inconsistent with Fundamental Rights", summary: "Laws violating fundamental rights are void", category: "Constitutional" },
-  { key: "article-14", title: "Article 14 — Right to Equality", summary: "Equality before law and equal protection of laws", category: "Constitutional" },
-  { key: "article-15", title: "Article 15 — Prohibition of Discrimination", summary: "Prohibits discrimination on grounds of religion, race, caste, sex", category: "Constitutional" },
-  { key: "article-19", title: "Article 19 — Protection of Certain Rights", summary: "Six fundamental freedoms including speech, assembly, movement", category: "Constitutional" },
-  { key: "article-20", title: "Article 20 — Protection Against Conviction", summary: "Protection against ex post facto laws and double jeopardy", category: "Constitutional" },
-  { key: "article-21", title: "Article 21 — Right to Life and Liberty", summary: "No person shall be deprived of life or liberty except by due process", category: "Constitutional" },
-  { key: "article-22", title: "Article 22 — Protection Against Arrest", summary: "Right to be informed of arrest and consult lawyer", category: "Constitutional" },
-  { key: "article-32", title: "Article 32 — Right to Constitutional Remedies", summary: "Right to approach Supreme Court for fundamental rights", category: "Constitutional" },
-  { key: "crpc-41", title: "CrPC 41 — Arrest Without Warrant", summary: "When police can arrest without warrant", category: "Procedural" },
-  { key: "crpc-154", title: "CrPC 154 — FIR Registration", summary: "Information relating to cognizable offense", category: "Procedural" },
-  { key: "rti-2005", title: "Right to Information Act, 2005", summary: "Citizens' right to access government information", category: "Civil" },
-];
-
 const INDIAN_LANGUAGES = [
   { code: "en", name: "English", nativeName: "English" },
   { code: "hi", name: "Hindi", nativeName: "हिंदी" },
@@ -92,7 +68,6 @@ const INDIAN_LANGUAGES = [
   { code: "pa", name: "Punjabi", nativeName: "ਪੰਜਾਬੀ" }
 ];
 
-// Sample reviews for demonstration
 const INITIAL_REVIEWS: Review[] = [
   { id: "1", rating: 5, comment: "Incredibly helpful! Got instant answers about my legal rights in Hindi. The AI understood my problem perfectly.", userName: "Rajesh K.", timestamp: Date.now() - 86400000 },
   { id: "2", rating: 4, comment: "Great tool for quick legal guidance. Saved me a trip to the lawyer for basic questions.", userName: "Priya S.", timestamp: Date.now() - 172800000 },
@@ -101,60 +76,27 @@ const INITIAL_REVIEWS: Review[] = [
   { id: "5", rating: 5, comment: "Excellent service! The explanations are clear and the response time is instant.", userName: "Kavya M.", timestamp: Date.now() - 432000000 }
 ];
 
-function detectLawQuery(text: string) {
-  const lower = text.toLowerCase().trim();
-  
-  for (const law of COMPREHENSIVE_LAW_DB) {
-    if (law.key.startsWith('ipc-')) {
-      const sectionNum = law.key.split('-')[1];
-      const ipcRegex = new RegExp(`\\bipc\\s*${sectionNum}\\b|\\bsection\\s*${sectionNum}\\s*(of\\s*)?ipc\\b`, 'i');
-      if (ipcRegex.test(text)) return law;
-    }
-    
-    if (law.key.startsWith('article-')) {
-      const articleNum = law.key.split('-')[1];
-      const articleRegex = new RegExp(`\\barticle\\s*${articleNum}\\b`, 'i');
-      if (articleRegex.test(text)) return law;
-    }
-    
-    if (law.key.startsWith('crpc-')) {
-      const sectionNum = law.key.split('-')[1];
-      const crpcRegex = new RegExp(`\\bcrpc\\s*${sectionNum}\\b|\\bsection\\s*${sectionNum}\\s*(of\\s*)?crpc\\b`, 'i');
-      if (crpcRegex.test(text)) return law;
-    }
-    
-    if (lower.includes(law.key) || lower.includes(law.title.toLowerCase())) {
-      return law;
-    }
-  }
-  
-  return null;
-}
-
-// FIXED: This hook now safely handles server-side rendering.
 function useLocalStorage<T>(key: string, defaultValue: T) {
-  const [state, setState] = useState<T>(() => {
-    // This function now only runs on the initial client-side render.
-    if (typeof window === 'undefined') {
-      return defaultValue;
+  const [state, setState] = useState<T>(defaultValue);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const item = localStorage.getItem(key);
+        if (item) setState(JSON.parse(item));
+      } catch (error) {
+        console.error(`Error reading localStorage key "${key}":`, error);
+      }
     }
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue;
-    } catch (error) {
-      console.error(error);
-      return defaultValue;
-    }
-  });
+  }, [key]);
 
   useEffect(() => {
-    // This effect syncs state changes back to localStorage on the client.
     if (typeof window !== 'undefined') {
-        try {
-            window.localStorage.setItem(key, JSON.stringify(state));
-        } catch (error) {
-            console.error(error);
-        }
+      try {
+        localStorage.setItem(key, JSON.stringify(state));
+      } catch (error) {
+        console.error(`Error setting localStorage key "${key}":`, error);
+      }
     }
   }, [key, state]);
 
@@ -167,9 +109,10 @@ function RatingStars({ rating, onRatingChange, interactive = false }: { rating: 
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
+          type="button"
           onClick={() => interactive && onRatingChange?.(star)}
           disabled={!interactive}
-          className={`text-sm ${star <= rating ? 'text-yellow-400' : 'text-gray-300'} ${interactive ? 'hover:text-yellow-300 cursor-pointer' : ''}`}
+          className={`text-sm ${star <= rating ? 'text-yellow-400' : 'text-gray-300'} ${interactive ? 'hover:text-yellow-300 cursor-pointer' : 'cursor-default'} disabled:cursor-default`}
         >
           ⭐
         </button>
@@ -179,7 +122,7 @@ function RatingStars({ rating, onRatingChange, interactive = false }: { rating: 
 }
 
 function CategoryBadge({ category }: { category: string }) {
-  const colors = {
+  const colors: { [key: string]: string } = {
     Constitutional: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
     Criminal: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
     Civil: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -188,42 +131,43 @@ function CategoryBadge({ category }: { category: string }) {
   };
   
   return (
-    <span className={`px-2 py-1 text-xs rounded-full font-medium ${colors[category as keyof typeof colors]}`}>
+    <span className={`px-2 py-1 text-xs rounded-full font-medium ${colors[category] || colors.Civil}`}>
       {category}
     </span>
   );
 }
 
-// FIXED: This component now safely handles server-side rendering.
-// Animated Background Component
 function AnimatedBackground() {
-  const [isClient, setIsClient] = useState(false);
+  const [windowSize, setWindowSize] = useState({ width: 1200, height: 800 });
 
   useEffect(() => {
-    setIsClient(true);
+    if (typeof window !== 'undefined') {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+      
+      const handleResize = () => {
+        setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
   }, []);
-
-  if (!isClient) {
-    return null;
-  }
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
-      {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900"></div>
       
-      {/* Floating particles */}
-      {[...Array(20)].map((_, i) => (
+      {[...Array(15)].map((_, i) => (
         <motion.div
           key={i}
           className="absolute w-2 h-2 bg-blue-400/20 rounded-full"
           initial={{
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
+            x: Math.random() * windowSize.width,
+            y: Math.random() * windowSize.height,
           }}
           animate={{
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
+            x: Math.random() * windowSize.width,
+            y: Math.random() * windowSize.height,
           }}
           transition={{
             duration: Math.random() * 20 + 10,
@@ -233,14 +177,12 @@ function AnimatedBackground() {
         />
       ))}
       
-      {/* Geometric shapes */}
       <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-full blur-xl"></div>
       <div className="absolute bottom-20 right-20 w-48 h-48 bg-gradient-to-r from-pink-400/10 to-blue-400/10 rounded-full blur-xl"></div>
-      <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-gradient-to-r from-purple-400/5 to-pink-400/5 rounded-full blur-2xl"></div>
+      <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-gradient-to-r from-purple-400/5 to-pink-400/5 rounded-full blur-2xl transform -translate-x-1/2 -translate-y-1/2"></div>
     </div>
   );
 }
-
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -257,6 +199,7 @@ function CopyButton({ text }: { text: string }) {
 
   return (
     <button
+      type="button"
       onClick={handleCopy}
       className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
       title="Copy to clipboard"
@@ -291,7 +234,7 @@ function FeedbackComponent({ messageId, onSubmit }: { messageId: string; onSubmi
   }
 
   return (
-    <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+    <div className="mt-2 p-3 bg-white/20 dark:bg-gray-700/20 backdrop-blur rounded-lg border border-white/30 dark:border-gray-600/30">
       <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Rate this response:</div>
       <div className="flex items-center gap-2 mb-2">
         <RatingStars rating={rating} onRatingChange={setRating} interactive />
@@ -305,12 +248,13 @@ function FeedbackComponent({ messageId, onSubmit }: { messageId: string; onSubmi
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Optional: Share your thoughts..."
-            className="w-full mt-2 p-2 text-xs border rounded dark:bg-gray-600 dark:border-gray-500"
+            className="w-full mt-2 p-2 text-xs border border-white/30 dark:border-gray-600/30 rounded bg-white/20 dark:bg-gray-600/20 backdrop-blur"
             rows={2}
           />
           <button
+            type="button"
             onClick={handleSubmit}
-            className="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+            className="mt-2 px-3 py-1 bg-blue-500/80 backdrop-blur text-white text-xs rounded hover:bg-blue-600/80 transition-colors"
           >
             Submit Feedback
           </button>
@@ -320,32 +264,34 @@ function FeedbackComponent({ messageId, onSubmit }: { messageId: string; onSubmi
   );
 }
 
-// FIXED: This hook now safely handles server-side rendering.
 function useVoiceRecognition(language: Language, onResult: (text: string) => void) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    // Check if running in the browser and if the API is supported.
-    if (typeof window === 'undefined' || (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window))) {
-      setIsSupported(false);
-      return;
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      if (SpeechRecognition) {
+        setIsSupported(true);
+        recognitionRef.current = new SpeechRecognition();
+        
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        
+        recognitionRef.current.onstart = () => setIsListening(true);
+        recognitionRef.current.onend = () => setIsListening(false);
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          onResult(transcript);
+        };
+        
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+        };
+      }
     }
-    
-    setIsSupported(true);
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
-    
-    recognitionRef.current.continuous = false;
-    recognitionRef.current.interimResults = false;
-    
-    recognitionRef.current.onstart = () => setIsListening(true);
-    recognitionRef.current.onend = () => setIsListening(false);
-    recognitionRef.current.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      onResult(transcript);
-    };
   }, [onResult]);
 
   useEffect(() => {
@@ -367,17 +313,21 @@ function useVoiceRecognition(language: Language, onResult: (text: string) => voi
     }
   }, [language]);
 
-  const startListening = () => {
+  const startListening = useCallback(() => {
     if (recognitionRef.current && !isListening) {
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+      }
     }
-  };
+  }, [isListening]);
 
-  const stopListening = () => {
+  const stopListening = useCallback(() => {
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
     }
-  };
+  }, [isListening]);
 
   return { isListening, isSupported, startListening, stopListening };
 }
@@ -398,11 +348,13 @@ export default function LegalHelpAI() {
   const [reviews, setReviews] = useLocalStorage<Review[]>("lh_reviews", INITIAL_REVIEWS);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
+  const [lawSearchResults, setLawSearchResults] = useState<any[]>([]);
+  const [searchingLaws, setSearchingLaws] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-        document.documentElement.classList.toggle("dark", darkMode);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle("dark", darkMode);
     }
   }, [darkMode]);
 
@@ -412,28 +364,50 @@ export default function LegalHelpAI() {
     }
   }, [messages]);
 
-  const handleVoiceResult = (transcript: string) => {
+  const handleVoiceResult = useCallback((transcript: string) => {
     setInput(transcript);
-  };
+  }, []);
 
   const { isListening, isSupported, startListening, stopListening } = useVoiceRecognition(language || 'en', handleVoiceResult);
 
   const scrollToSection = (sectionId: string) => {
-    if (typeof window !== 'undefined') {
-        const element = document.getElementById(sectionId);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
     }
     setMenuOpen(false);
   };
 
   const generateShareUrl = () => {
-    if (typeof window !== 'undefined') {
-        const chatData = btoa(JSON.stringify(messages.slice(-10)));
-        const url = `${window.location.origin}${window.location.pathname}?shared=${chatData}`;
-        setShareUrl(url);
-        setShowShareModal(true);
+    try {
+      const chatData = btoa(JSON.stringify(messages.slice(-10)));
+      const url = `${window.location.origin}${window.location.pathname}?shared=${chatData}`;
+      setShareUrl(url);
+      setShowShareModal(true);
+    } catch (error) {
+      console.error('Error generating share URL:', error);
+    }
+  };
+
+  const searchLegalInformation = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+    
+    setSearchingLaws(true);
+    try {
+      const res = await fetch("/api/legal-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: searchQuery, language: language || 'en' })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setLawSearchResults(data.results || []);
+      }
+    } catch (error) {
+      console.error('Legal search error:', error);
+    } finally {
+      setSearchingLaws(false);
     }
   };
 
@@ -451,35 +425,6 @@ export default function LegalHelpAI() {
     setInput("");
     setSending(true);
 
-    const law = detectLawQuery(input);
-    if (law) {
-      const getLanguageResponse = (lang: Language, lawInfo: any) => {
-        const responses = {
-          en: `📖 **${lawInfo.title}**\n\n📋 **Summary:** ${lawInfo.summary}\n\n📂 **Category:** ${lawInfo.category}\n\n⚠️ **Note:** This is informational only, not legal advice.`,
-          hi: `📖 **${lawInfo.title}**\n\n📋 **सार:** ${lawInfo.summary}\n\n📂 **श्रेणी:** ${lawInfo.category}\n\n⚠️ **नोट:** यह केवल जानकारी है, कानूनी सलाह नहीं।`,
-          ta: `📖 **${lawInfo.title}**\n\n📋 **சுருக்கம்:** ${lawInfo.summary}\n\n📂 **வகை:** ${lawInfo.category}\n\n⚠️ **குறிப்பு:** இது தகவலுக்கு மட்டுமே, சட்ட ஆலோசனை அல்ல.`,
-          te: `📖 **${lawInfo.title}**\n\n📋 **సారాంశం:** ${lawInfo.summary}\n\n📂 **వర్గం:** ${lawInfo.category}\n\n⚠️ **గమనిక:** ఇది సమాచారం మాత్రమే, చట్టపరమైన సలహా కాదు.`,
-          bn: `📖 **${lawInfo.title}**\n\n📋 **সারসংক্ষেপ:** ${lawInfo.summary}\n\n📂 **বিভাগ:** ${lawInfo.category}\n\n⚠️ **নোট:** এটি শুধুমাত্র তথ্যের জন্য, আইনি পরামর্শ নয়।`,
-          mr: `📖 **${lawInfo.title}**\n\n📋 **सारांश:** ${lawInfo.summary}\n\n📂 **श्रेणी:** ${lawInfo.category}\n\n⚠️ **टीप:** हे केवळ माहितीसाठी आहे, कायदेशीर सल्ला नाही.`,
-          kn: `📖 **${lawInfo.title}**\n\n📋 **ಸಾರಾಂಶ:** ${lawInfo.summary}\n\n📂 **ವರ್ಗ:** ${lawInfo.category}\n\n⚠️ **ಗಮನಿಸಿ:** ಇದು ಕೇವಲ ಮಾಹಿತಿಗಾಗಿ ಮಾತ್ರ, ಕಾನೂನು ಸಲಹೆಯಲ್ಲ.`,
-          gu: `📖 **${lawInfo.title}**\n\n📋 **સાર:** ${lawInfo.summary}\n\n📂 **વર્ગ:** ${lawInfo.category}\n\n⚠️ **નોંધ:** આ ફક્ત માહિતી માટે છે, કાનૂની સલાહ નથી.`,
-          or: `📖 **${lawInfo.title}**\n\n📋 **ସାରାଂଶ:** ${lawInfo.summary}\n\n📂 **ଶ୍ରେଣୀ:** ${lawInfo.category}\n\n⚠️ **ନୋଟ୍:** ଏହା କେବଳ ସୂଚନା ପାଇଁ, ଆଇନଗତ ପରାମର୍ଶ ନୁହେଁ।`,
-          ml: `📖 **${lawInfo.title}**\n\n📋 **സംഗ്രഹം:** ${lawInfo.summary}\n\n📂 **വിഭാഗം:** ${lawInfo.category}\n\n⚠️ **കുറിപ്പ്:** ഇത് വിവരങ്ങൾക്ക് മാത്രമാണ്, നിയമ ഉപദേശമല്ല.`,
-          pa: `📖 **${lawInfo.title}**\n\n📋 **ਸੰਖੇਪ:** ${lawInfo.summary}\n\n📂 **ਸ਼ਰੇਣੀ:** ${lawInfo.category}\n\n⚠️ **ਨੋਟ:** ਇਹ ਸਿਰਫ਼ ਜਾਣਕਾਰੀ ਲਈ ਹੈ, ਕਾਨੂੰਨੀ ਸਲਾਹ ਨਹੀਂ।`
-        };
-        return responses[lang] || responses.en;
-      };
-
-      setMessages(prev => [...prev, {
-        id: Math.random().toString(36),
-        role: "assistant",
-        content: getLanguageResponse(language, law),
-        timestamp: Date.now()
-      }]);
-      setSending(false);
-      return;
-    }
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -491,14 +436,19 @@ export default function LegalHelpAI() {
         })
       });
       
-      const data = await res.json();
-      setMessages(prev => [...prev, {
-        id: Math.random().toString(36),
-        role: "assistant",
-        content: data.reply || "Sorry, something went wrong.",
-        timestamp: Date.now()
-      }]);
-    } catch {
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(prev => [...prev, {
+          id: Math.random().toString(36),
+          role: "assistant",
+          content: data.reply || "Sorry, something went wrong.",
+          timestamp: Date.now()
+        }]);
+      } else {
+        throw new Error('API request failed');
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
       setMessages(prev => [...prev, {
         id: Math.random().toString(36),
         role: "assistant", 
@@ -531,12 +481,6 @@ export default function LegalHelpAI() {
     return matchesSearch && matchesCategory;
   });
 
-  const filteredLaws = COMPREHENSIVE_LAW_DB.filter(law => {
-    return law.title.toLowerCase().includes(lawSearchTerm.toLowerCase()) ||
-           law.summary.toLowerCase().includes(lawSearchTerm.toLowerCase()) ||
-           law.key.toLowerCase().includes(lawSearchTerm.toLowerCase());
-  });
-
   const categories = ["All", "Constitutional", "Criminal", "Civil", "Family", "Procedural"];
 
   const averageRating = reviews.length > 0 
@@ -547,17 +491,19 @@ export default function LegalHelpAI() {
     <div className={`min-h-screen ${darkMode ? "dark bg-gray-900 text-white" : "bg-white text-gray-900"}`}>
       <AnimatedBackground />
       
+      {/* Glassmorphism Header */}
       <nav className="sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-white/20 dark:border-gray-700/20 p-4 z-40">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4">
             <button 
+              type="button"
               onClick={() => setMenuOpen(!menuOpen)}
               className="p-2 rounded-lg hover:bg-white/20 dark:hover:bg-gray-800/20 transition-colors backdrop-blur"
             >
               <div className="space-y-1">
-                <div className="w-6 h-0.5 bg-current"></div>
-                <div className="w-6 h-0.5 bg-current"></div>
-                <div className="w-6 h-0.5 bg-current"></div>
+                <div className="w-6 h-0.5 bg-current transition-transform"></div>
+                <div className="w-6 h-0.5 bg-current transition-transform"></div>
+                <div className="w-6 h-0.5 bg-current transition-transform"></div>
               </div>
             </button>
             <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -565,19 +511,32 @@ export default function LegalHelpAI() {
             </h1>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setRightsOpen(true)} className="px-4 py-2 bg-blue-500/80 backdrop-blur text-white rounded-lg hover:bg-blue-600/80 transition-colors hidden md:block">
+            <button 
+              type="button"
+              onClick={() => setRightsOpen(true)} 
+              className="px-4 py-2 bg-blue-500/80 backdrop-blur text-white rounded-lg hover:bg-blue-600/80 transition-colors hidden md:block"
+            >
               My Rights
             </button>
-            <button onClick={() => setLawSearchOpen(true)} className="px-4 py-2 bg-green-500/80 backdrop-blur text-white rounded-lg hover:bg-green-600/80 transition-colors hidden md:block">
+            <button 
+              type="button"
+              onClick={() => setLawSearchOpen(true)} 
+              className="px-4 py-2 bg-green-500/80 backdrop-blur text-white rounded-lg hover:bg-green-600/80 transition-colors hidden md:block"
+            >
               🔍 Law Search
             </button>
-            <button onClick={() => setDarkMode(!darkMode)} className="px-3 py-2 bg-white/20 dark:bg-gray-800/20 backdrop-blur border border-white/30 dark:border-gray-700/30 rounded-lg hover:bg-white/30 dark:hover:bg-gray-700/30 transition-colors">
+            <button 
+              type="button"
+              onClick={() => setDarkMode(!darkMode)} 
+              className="px-3 py-2 bg-white/20 dark:bg-gray-800/20 backdrop-blur border border-white/30 dark:border-gray-700/30 rounded-lg hover:bg-white/30 dark:hover:bg-gray-700/30 transition-colors"
+            >
               {darkMode ? "☀️" : "🌙"}
             </button>
           </div>
         </div>
       </nav>
 
+      {/* Enhanced Hamburger Menu */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -596,25 +555,55 @@ export default function LegalHelpAI() {
             >
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Menu</h2>
-                <button onClick={() => setMenuOpen(false)} className="text-2xl hover:bg-white/20 dark:hover:bg-gray-800/20 w-8 h-8 rounded transition-colors">×</button>
+                <button 
+                  type="button"
+                  onClick={() => setMenuOpen(false)} 
+                  className="text-2xl hover:bg-white/20 dark:hover:bg-gray-800/20 w-8 h-8 rounded transition-colors"
+                >
+                  ×
+                </button>
               </div>
               <nav className="space-y-4">
-                <button onClick={() => scrollToSection('home')} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur">
+                <button 
+                  type="button"
+                  onClick={() => scrollToSection('home')} 
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur"
+                >
                   🏠 <span>Home</span>
                 </button>
-                <button onClick={() => { setRightsOpen(true); setMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur">
+                <button 
+                  type="button"
+                  onClick={() => { setRightsOpen(true); setMenuOpen(false); }} 
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur"
+                >
                   ⚖️ <span>Legal Rights</span>
                 </button>
-                <button onClick={() => { setChatOpen(true); setMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur">
+                <button 
+                  type="button"
+                  onClick={() => { setChatOpen(true); setMenuOpen(false); }} 
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur"
+                >
                   🤖 <span>AI Legal Chat</span>
                 </button>
-                <button onClick={() => { setLawSearchOpen(true); setMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur">
+                <button 
+                  type="button"
+                  onClick={() => { setLawSearchOpen(true); setMenuOpen(false); }} 
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur"
+                >
                   🔍 <span>Law Search</span>
                 </button>
-                <button onClick={() => scrollToSection('legal-guidance')} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur">
+                <button 
+                  type="button"
+                  onClick={() => scrollToSection('legal-guidance')} 
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur"
+                >
                   📚 <span>Legal Guidance</span>
                 </button>
-                <button onClick={() => scrollToSection('contact')} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur">
+                <button 
+                  type="button"
+                  onClick={() => scrollToSection('contact')} 
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/30 dark:hover:bg-gray-800/30 w-full text-left transition-colors backdrop-blur"
+                >
                   📞 <span>Contact Us</span>
                 </button>
               </nav>
@@ -622,233 +611,220 @@ export default function LegalHelpAI() {
           </motion.div>
         )}
       </AnimatePresence>
-      
-      <main>
-        <section id="home" className="max-w-6xl mx-auto px-4 py-12 text-center">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
-            <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              🇮🇳 India's AI Legal Assistant
-            </h2>
-            <p className="text-xl mb-6 max-w-3xl mx-auto text-gray-600 dark:text-gray-300">
-              Get instant legal answers in 11 Indian languages • Voice chat enabled • 24/7 availability
-            </p>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 dark:bg-gray-800/20 backdrop-blur-xl rounded-full border border-white/30 dark:border-gray-700/30 mb-6">
-              <span className="text-yellow-400">⭐</span>
-              <span className="font-semibold">{averageRating}/5</span>
-              <span className="text-gray-600 dark:text-gray-400">• {reviews.length} reviews</span>
-            </div>
-          </motion.div>
-          
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
-          >
-            <button 
-              onClick={() => setChatOpen(true)} 
-              className="px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
-            >
-              🤖 Start AI Chat
-            </button>
-            <button 
-              onClick={() => setRightsOpen(true)} 
-              className="px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl text-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
-            >
-              ⚖️ Know Your Rights
-            </button>
-            <button 
-              onClick={() => setLawSearchOpen(true)} 
-              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
-            >
-              🔍 Search Laws
-            </button>
-          </motion.div>
 
-          <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+      {/* Enhanced Hero Section */}
+      <section id="home" className="max-w-6xl mx-auto px-4 py-12 text-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <h2 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            🇮🇳 India's AI Legal Assistant
+          </h2>
+          <p className="text-xl mb-6 max-w-3xl mx-auto text-gray-600 dark:text-gray-300">
+            Get instant legal answers in 11 Indian languages • Voice chat enabled • 24/7 availability
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 dark:bg-gray-800/20 backdrop-blur-xl rounded-full border border-white/30 dark:border-gray-700/30 mb-6">
+            <span className="text-yellow-400">⭐</span>
+            <span className="font-semibold">{averageRating}/5</span>
+            <span className="text-gray-600 dark:text-gray-400">• {reviews.length} reviews</span>
+          </div>
+        </motion.div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
+        >
+          <button 
+            type="button"
+            onClick={() => setChatOpen(true)} 
+            className="px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
+          >
+            🤖 Start AI Chat
+          </button>
+          <button 
+            type="button"
+            onClick={() => setRightsOpen(true)} 
+            className="px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl text-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
+          >
+            ⚖️ Know Your Rights
+          </button>
+          <button 
+            type="button"
+            onClick={() => setLawSearchOpen(true)} 
+            className="px-8 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl text-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
+          >
+            🔍 Search Laws
+          </button>
+        </motion.div>
+
+        {/* Enhanced Features Grid */}
+        <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          {[
+            { icon: "⚡", title: "Instant Legal Answers", desc: "Get immediate responses to your legal queries" },
+            { icon: "🌐", title: "11 Indian Languages", desc: "Ask questions in your preferred language" },
+            { icon: "🎤", title: "Voice Chat Enabled", desc: "Speak your questions, get voice responses" },
+            { icon: "🔒", title: "100% Confidential", desc: "Your conversations are completely private" }
+          ].map((feature, i) => (
+            <motion.div 
+              key={i}
+              whileHover={{ scale: 1.05, y: -5 }}
+              className="bg-white/20 dark:bg-gray-800/20 backdrop-blur-xl p-6 rounded-2xl border border-white/30 dark:border-gray-700/30 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <div className="text-4xl mb-4">{feature.icon}</div>
+              <h3 className="font-bold mb-2">{feature.title}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300">{feature.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Enhanced Legal Guidance Section */}
+      <section id="legal-guidance" className="py-20">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <h3 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              🎯 Legal Guidance Hub
+            </h3>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Navigate India's legal landscape with confidence. Get expert guidance tailored to your needs.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              { icon: "⚡", title: "Instant Legal Answers", desc: "Get immediate responses to your legal queries" },
-              { icon: "🌐", title: "11 Indian Languages", desc: "Ask questions in your preferred language" },
-              { icon: "🎤", title: "Voice Chat Enabled", desc: "Speak your questions, get voice responses" },
-              { icon: "🔒", title: "100% Confidential", desc: "Your conversations are completely private" }
-            ].map((feature, i) => (
+              { icon: "🏛️", title: "Constitutional Law", desc: "Understand your fundamental rights", color: "from-blue-500 to-blue-600" },
+              { icon: "⚖️", title: "Criminal Law", desc: "FIRs, bail, and criminal procedure", color: "from-red-500 to-red-600" },
+              { icon: "📋", title: "Civil Matters", desc: "Property, contracts, consumer rights", color: "from-green-500 to-green-600" },
+              { icon: "👨‍👩‍👧‍👦", title: "Family Law", desc: "Marriage, divorce, custody matters", color: "from-purple-500 to-purple-600" },
+              { icon: "🏢", title: "Corporate Law", desc: "Business, compliance, contracts", color: "from-yellow-500 to-orange-500" },
+              { icon: "🎓", title: "Legal Education", desc: "Learn about Indian legal system", color: "from-indigo-500 to-indigo-600" }
+            ].map((item, i) => (
               <motion.div 
                 key={i}
-                whileHover={{ scale: 1.05, y: -5 }}
-                className="bg-white/20 dark:bg-gray-800/20 backdrop-blur-xl p-6 rounded-2xl border border-white/30 dark:border-gray-700/30 shadow-lg hover:shadow-xl transition-all duration-300"
+                whileHover={{ y: -5, scale: 1.02 }} 
+                className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-8 rounded-2xl border border-white/20 dark:border-gray-700/20 shadow-lg hover:shadow-2xl transition-all duration-300"
               >
-                <div className="text-4xl mb-4">{feature.icon}</div>
-                <h3 className="font-bold mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">{feature.desc}</p>
+                <div className={`w-16 h-16 bg-gradient-to-br ${item.color} text-white rounded-2xl flex items-center justify-center text-2xl mx-auto mb-6 shadow-lg`}>
+                  {item.icon}
+                </div>
+                <h4 className="text-xl font-bold mb-4 text-center">{item.title}</h4>
+                <p className="text-gray-600 dark:text-gray-300 text-center mb-6">{item.desc}</p>
+                <div className="flex justify-center">
+                  <button 
+                    type="button"
+                    onClick={() => setChatOpen(true)}
+                    className={`px-6 py-3 bg-gradient-to-r ${item.color} text-white rounded-lg hover:shadow-lg transition-all duration-300`}
+                  >
+                    Get Help
+                  </button>
+                </div>
               </motion.div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="legal-guidance" className="py-20">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center mb-16">
-              <h3 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                🎯 Legal Guidance Hub
-              </h3>
-              <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-                Navigate India's legal landscape with confidence. Get expert guidance tailored to your needs.
-              </p>
-            </div>
-            
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[
-                { icon: "🏛️", title: "Constitutional Law", desc: "Understand your fundamental rights", color: "from-blue-500 to-blue-600" },
-                { icon: "⚖️", title: "Criminal Law", desc: "FIRs, bail, and criminal procedure", color: "from-red-500 to-red-600" },
-                { icon: "📋", title: "Civil Matters", desc: "Property, contracts, consumer rights", color: "from-green-500 to-green-600" },
-                { icon: "👨‍👩‍👧‍👦", title: "Family Law", desc: "Marriage, divorce, custody matters", color: "from-purple-500 to-purple-600" },
-                { icon: "🏢", title: "Corporate Law", desc: "Business, compliance, contracts", color: "from-yellow-500 to-orange-500" },
-                { icon: "🎓", title: "Legal Education", desc: "Learn about Indian legal system", color: "from-indigo-500 to-indigo-600" }
-              ].map((item, i) => (
-                <motion.div 
-                  key={i}
-                  whileHover={{ y: -5, scale: 1.02 }} 
-                  className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-8 rounded-2xl border border-white/20 dark:border-gray-700/20 shadow-lg hover:shadow-2xl transition-all duration-300"
-                >
-                  <div className={`w-16 h-16 bg-gradient-to-br ${item.color} text-white rounded-2xl flex items-center justify-center text-2xl mx-auto mb-6 shadow-lg`}>
-                    {item.icon}
-                  </div>
-                  <h4 className="text-xl font-bold mb-4 text-center">{item.title}</h4>
-                  <p className="text-gray-600 dark:text-gray-300 text-center mb-6">{item.desc}</p>
-                  <div className="flex justify-center">
-                    <button 
-                      onClick={() => setChatOpen(true)}
-                      className={`px-6 py-3 bg-gradient-to-r ${item.color} text-white rounded-lg hover:shadow-lg transition-all duration-300`}
-                    >
-                      Get Help
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="about" className="py-16">
-          <div className="max-w-6xl mx-auto px-4">
-            <h3 className="text-3xl font-bold mb-12 text-center">How LegalHelp AI Helps You</h3>
-            
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {[
-                { icon: "🕐", title: "24/7 Availability", desc: "Legal guidance whenever you need it" },
-                { icon: "💰", title: "Free Basic Guidance", desc: "Essential legal information at no cost" },
-                { icon: "📱", title: "Mobile Friendly", desc: "Works perfectly on your smartphone" },
-                { icon: "🎯", title: "Easy to Understand", desc: "Complex legal concepts explained simply" }
-              ].map((item, i) => (
-                <motion.div key={i} whileHover={{ scale: 1.05 }} className="text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 text-white rounded-full flex items-center justify-center text-2xl mx-auto mb-4 shadow-lg">
-                    {item.icon}
-                  </div>
-                  <h4 className="font-bold mb-2">{item.title}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">{item.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="py-16 bg-white/5 dark:bg-gray-800/5">
-          <div className="max-w-6xl mx-auto px-4">
-            <h3 className="text-3xl font-bold mb-6 text-center">Your Fundamental Rights</h3>
-            <p className="text-center text-gray-600 dark:text-gray-300 mb-8">
-              Know your 30 most important legal rights as an Indian citizen
-            </p>
-            
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {ENHANCED_RIGHTS.slice(0, 6).map((right, i) => (
-                <motion.div 
-                  key={i} 
-                  whileHover={{ scale: 1.02 }} 
-                  className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20 shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="text-2xl">{right.icon}</span>
-                    <CategoryBadge category={right.category} />
-                  </div>
-                  <h4 className="font-bold mb-2 text-lg">{right.title}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{right.detail}</p>
-                  <RatingStars rating={right.rating} />
-                </motion.div>
-              ))}
-            </div>
-            
-            <div className="text-center">
-              <button 
-                onClick={() => setRightsOpen(true)} 
-                className="px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl text-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
+      {/* Rights Preview Section */}
+      <section className="py-16 bg-white/5 dark:bg-gray-800/5">
+        <div className="max-w-6xl mx-auto px-4">
+          <h3 className="text-3xl font-bold mb-6 text-center">Your Fundamental Rights</h3>
+          <p className="text-center text-gray-600 dark:text-gray-300 mb-8">
+            Know your 30 most important legal rights as an Indian citizen
+          </p>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {ENHANCED_RIGHTS.slice(0, 6).map((right, i) => (
+              <motion.div 
+                key={i} 
+                whileHover={{ scale: 1.02 }} 
+                className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20 shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                📜 View All 30 Rights
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section id="contact" className="py-16">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <h3 className="text-3xl font-bold mb-6">Contact Us</h3>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20">
-                <h4 className="font-bold mb-4 text-xl">Get in Touch</h4>
-                <p className="mb-2">📧 Email: support@legalhelp.ai</p>
-                <p className="mb-2">⏰ Hours: 10:00–18:00 IST, Mon–Fri</p>
-                <p className="mb-4">📍 Location: Mumbai, India</p>
-              </div>
-              <div className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20">
-                <h4 className="font-bold mb-4 text-xl">Emergency Contacts</h4>
-                <p className="mb-2">🚨 Police: 100</p>
-                <p className="mb-2">👨‍⚖️ Legal Aid: 15100</p>
-                <p className="mb-2">👩‍⚖️ Women Helpline: 181</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="reviews" className="py-16 bg-white/5 dark:bg-gray-800/5">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center mb-12">
-              <h3 className="text-3xl font-bold mb-4">What Our Users Say</h3>
-              <div className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 dark:bg-gray-800/20 backdrop-blur-xl rounded-full border border-white/30 dark:border-gray-700/30">
-                <div className="flex">
-                  {[1,2,3,4,5].map(star => (
-                    <span key={star} className="text-yellow-400 text-lg">⭐</span>
-                  ))}
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-2xl">{right.icon}</span>
+                  <CategoryBadge category={right.category} />
                 </div>
-                <span className="font-bold text-lg">{averageRating}/5</span>
-                <span className="text-gray-600 dark:text-gray-400">({reviews.length} reviews)</span>
-              </div>
+                <h4 className="font-bold mb-2 text-lg">{right.title}</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{right.detail}</p>
+                <RatingStars rating={right.rating} />
+              </motion.div>
+            ))}
+          </div>
+          
+          <div className="text-center">
+            <button 
+              type="button"
+              onClick={() => setRightsOpen(true)} 
+              className="px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl text-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur"
+            >
+              📜 View All 30 Rights
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-16">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h3 className="text-3xl font-bold mb-6">Contact Us</h3>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20">
+              <h4 className="font-bold mb-4 text-xl">Get in Touch</h4>
+              <p className="mb-2">📧 Email: support@legalhelp.ai</p>
+              <p className="mb-2">⏰ Hours: 10:00–18:00 IST, Mon–Fri</p>
+              <p className="mb-4">📍 Location: Mumbai, India</p>
             </div>
-            
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {reviews.slice(0, 6).map((review) => (
-                <motion.div 
-                  key={review.id}
-                  whileHover={{ scale: 1.02 }}
-                  className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20 shadow-lg"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <RatingStars rating={review.rating} />
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {new Date(review.timestamp).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-sm mb-3 text-gray-700 dark:text-gray-300">{review.comment}</p>
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">— {review.userName}</p>
-                </motion.div>
-              ))}
+            <div className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20">
+              <h4 className="font-bold mb-4 text-xl">Emergency Contacts</h4>
+              <p className="mb-2">🚨 Police: 100</p>
+              <p className="mb-2">👨‍⚖️ Legal Aid: 15100</p>
+              <p className="mb-2">👩‍⚖️ Women Helpline: 181</p>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
+      {/* User Reviews Section */}
+      <section id="reviews" className="py-16 bg-white/5 dark:bg-gray-800/5">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold mb-4">What Our Users Say</h3>
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-white/20 dark:bg-gray-800/20 backdrop-blur-xl rounded-full border border-white/30 dark:border-gray-700/30">
+              <div className="flex">
+                {[1,2,3,4,5].map(star => (
+                  <span key={star} className="text-yellow-400 text-lg">⭐</span>
+                ))}
+              </div>
+              <span className="font-bold text-lg">{averageRating}/5</span>
+              <span className="text-gray-600 dark:text-gray-400">({reviews.length} reviews)</span>
+            </div>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reviews.slice(0, 6).map((review) => (
+              <motion.div 
+                key={review.id}
+                whileHover={{ scale: 1.02 }}
+                className="bg-white/10 dark:bg-gray-800/10 backdrop-blur-xl p-6 rounded-xl border border-white/20 dark:border-gray-700/20 shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <RatingStars rating={review.rating} />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(review.timestamp).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-sm mb-3 text-gray-700 dark:text-gray-300">{review.comment}</p>
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">— {review.userName}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Law Search Modal */}
       <AnimatePresence>
         {lawSearchOpen && (
           <motion.div
@@ -868,24 +844,42 @@ export default function LegalHelpAI() {
               <div className="p-6 border-b border-white/20 dark:border-gray-700/20">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-2xl font-bold">🔍 Indian Law Search Engine</h3>
-                  <button onClick={() => setLawSearchOpen(false)} className="px-4 py-2 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80">
+                  <button 
+                    type="button"
+                    onClick={() => setLawSearchOpen(false)} 
+                    className="px-4 py-2 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80"
+                  >
                     ✕ Close
                   </button>
                 </div>
-                <input
-                  type="text"
-                  placeholder="🔍 Search laws, articles, sections (e.g., 'IPC 420', 'Article 21', 'domestic violence')"
-                  value={lawSearchTerm}
-                  onChange={(e) => setLawSearchTerm(e.target.value)}
-                  className="w-full p-4 border border-white/30 dark:border-gray-700/30 rounded-xl bg-white/20 dark:bg-gray-700/20 backdrop-blur text-lg"
-                  autoFocus
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="🔍 Search laws, articles, sections (e.g., 'IPC 420', 'Article 21', 'domestic violence')"
+                    value={lawSearchTerm}
+                    onChange={(e) => setLawSearchTerm(e.target.value)}
+                    className="flex-1 p-4 border border-white/30 dark:border-gray-700/30 rounded-xl bg-white/20 dark:bg-gray-700/20 backdrop-blur text-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => searchLegalInformation(lawSearchTerm)}
+                    disabled={searchingLaws || !lawSearchTerm.trim()}
+                    className="px-6 py-4 bg-blue-500/80 backdrop-blur text-white rounded-xl hover:bg-blue-600/80 disabled:opacity-50 transition-colors"
+                  >
+                    {searchingLaws ? "..." : "Search"}
+                  </button>
+                </div>
               </div>
               
               <div className="p-6 overflow-y-auto max-h-[70vh]">
-                <div className="grid gap-4">
-                  {filteredLaws.length > 0 ? (
-                    filteredLaws.map((law, idx) => (
+                {searchingLaws ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <p className="mt-2 text-gray-500">Searching legal database...</p>
+                  </div>
+                ) : lawSearchResults.length > 0 ? (
+                  <div className="grid gap-4">
+                    {lawSearchResults.map((result, idx) => (
                       <motion.div
                         key={idx}
                         initial={{ opacity: 0, y: 10 }}
@@ -893,32 +887,28 @@ export default function LegalHelpAI() {
                         transition={{ delay: idx * 0.05 }}
                         className="bg-white/10 dark:bg-gray-700/10 backdrop-blur p-4 rounded-xl border border-white/20 dark:border-gray-700/20 hover:shadow-lg transition-all duration-300"
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <h4 className="font-bold text-lg">{law.title}</h4>
-                          <CategoryBadge category={law.category} />
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-300 mb-2">{law.summary}</p>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Search terms: {law.key.replace('-', ' ').toUpperCase()}
-                        </div>
+                        <h4 className="font-bold text-lg mb-2">{result.title}</h4>
+                        <p className="text-gray-600 dark:text-gray-300 mb-2">{result.summary}</p>
+                        {result.category && <CategoryBadge category={result.category} />}
                       </motion.div>
                     ))
-                  ) : lawSearchTerm ? (
-                    <div className="text-center py-8 text-gray-500">
-                      No laws found matching "{lawSearchTerm}". Try searching for IPC sections, Articles, or legal topics.
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      Start typing to search through Indian laws, articles, and sections...
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : lawSearchTerm ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No results found. Try different keywords or use the AI chat for comprehensive legal help.
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Enter search terms above to find relevant Indian laws, articles, and sections.
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-      
+
+      {/* Enhanced Rights Modal */}
       <AnimatePresence>
         {rightsOpen && (
           <motion.div
@@ -937,7 +927,11 @@ export default function LegalHelpAI() {
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold mb-4 md:mb-0">30 Essential Legal Rights</h3>
-                <button onClick={() => setRightsOpen(false)} className="px-4 py-2 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80">
+                <button 
+                  type="button"
+                  onClick={() => setRightsOpen(false)} 
+                  className="px-4 py-2 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80"
+                >
                   ✕ Close
                 </button>
               </div>
@@ -955,6 +949,7 @@ export default function LegalHelpAI() {
                   {categories.map(category => (
                     <button
                       key={category}
+                      type="button"
                       onClick={() => setSelectedCategory(category)}
                       className={`px-4 py-2 rounded-xl text-sm transition-colors backdrop-blur ${
                         selectedCategory === category 
@@ -992,6 +987,7 @@ export default function LegalHelpAI() {
         )}
       </AnimatePresence>
 
+      {/* Share Modal */}
       <AnimatePresence>
         {showShareModal && (
           <motion.div
@@ -1015,12 +1011,14 @@ export default function LegalHelpAI() {
               </div>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => navigator.clipboard.writeText(shareUrl)}
                   className="flex-1 px-4 py-2 bg-blue-500/80 backdrop-blur text-white rounded-lg hover:bg-blue-600/80"
                 >
                   Copy Link
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowShareModal(false)}
                   className="px-4 py-2 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80"
                 >
@@ -1032,14 +1030,16 @@ export default function LegalHelpAI() {
         )}
       </AnimatePresence>
 
+      {/* Enhanced Multilingual Chatbot */}
       <AnimatePresence>
         {chatOpen && (
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="fixed bottom-4 right-4 w-full h-full sm:w-[520px] sm:h-[680px] sm:max-w-[95vw] sm:max-h-[90vh] bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
+            className="fixed bottom-4 right-4 w-[520px] h-[680px] max-w-[95vw] max-h-[90vh] bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
           >
+            {/* Chat Header */}
             <div className="flex justify-between items-center p-4 border-b border-white/20 dark:border-gray-700/20 bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white backdrop-blur flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-lg">
@@ -1054,6 +1054,7 @@ export default function LegalHelpAI() {
               </div>
               <div className="flex items-center gap-2">
                 <button 
+                  type="button"
                   onClick={generateShareUrl}
                   className="text-white hover:bg-white/20 rounded p-2 transition-colors"
                   title="Share chat"
@@ -1061,6 +1062,7 @@ export default function LegalHelpAI() {
                   🔗
                 </button>
                 <button 
+                  type="button"
                   onClick={() => setChatOpen(false)} 
                   className="text-white hover:bg-white/20 rounded p-2 transition-colors"
                 >
@@ -1069,6 +1071,7 @@ export default function LegalHelpAI() {
               </div>
             </div>
 
+            {/* Language Selection */}
             {!language && (
               <div className="p-6 border-b border-white/20 dark:border-gray-700/20 bg-blue-50/50 dark:bg-blue-900/30 flex-shrink-0">
                 <h5 className="font-semibold mb-4 text-center">🌐 Choose Your Language</h5>
@@ -1076,6 +1079,7 @@ export default function LegalHelpAI() {
                   {INDIAN_LANGUAGES.map((lang) => (
                     <motion.button
                       key={lang.code}
+                      type="button"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setLanguage(lang.code as Language)}
@@ -1089,26 +1093,28 @@ export default function LegalHelpAI() {
               </div>
             )}
 
+            {/* Chat Messages */}
             <div 
               ref={chatRef} 
               className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
-              style={{ scrollBehavior: 'smooth' }}
             >
               <div className="text-xs bg-blue-50/80 dark:bg-blue-900/50 backdrop-blur p-3 rounded-xl border border-blue-200/30 dark:border-blue-700/30">
-                💡 <strong>Pro Tips:</strong> Describe your legal situation, ask "IPC 420" for instant law info, or use voice chat!
+                💡 <strong>Pro Tips:</strong> Describe your legal situation, ask about specific laws, or use voice chat!
               </div>
               
               {messages.map((msg) => (
                 <div key={msg.id} className="space-y-2">
                   <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] p-3 rounded-xl ${
+                    <div className={`max-w-[85%] p-3 rounded-xl relative ${
                       msg.role === "user" 
                         ? "bg-blue-500/80 backdrop-blur text-white" 
                         : "bg-white/30 dark:bg-gray-700/30 backdrop-blur border border-white/20 dark:border-gray-600/20"
                     }`}>
                       <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
                       {msg.role === "assistant" && (
-                        <CopyButton text={msg.content} />
+                        <div className="flex justify-end mt-1">
+                          <CopyButton text={msg.content} />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1139,15 +1145,28 @@ export default function LegalHelpAI() {
               )}
             </div>
 
+            {/* Chat Input with Voice */}
             <div className="p-4 border-t border-white/20 dark:border-gray-700/20 flex-shrink-0">
               <div className="flex gap-2 mb-2">
-                <button onClick={() => setMessages([])} className="text-xs px-3 py-1 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80">
+                <button 
+                  type="button"
+                  onClick={() => setMessages([])} 
+                  className="text-xs px-3 py-1 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80"
+                >
                   Clear
                 </button>
-                <button onClick={() => setLanguage(null)} className="text-xs px-3 py-1 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80">
+                <button 
+                  type="button"
+                  onClick={() => setLanguage(null)} 
+                  className="text-xs px-3 py-1 bg-gray-500/80 backdrop-blur text-white rounded-lg hover:bg-gray-600/80"
+                >
                   Language
                 </button>
-                <button onClick={generateShareUrl} className="text-xs px-3 py-1 bg-blue-500/80 backdrop-blur text-white rounded-lg hover:bg-blue-600/80">
+                <button 
+                  type="button"
+                  onClick={generateShareUrl} 
+                  className="text-xs px-3 py-1 bg-blue-500/80 backdrop-blur text-white rounded-lg hover:bg-blue-600/80"
+                >
                   Share Chat
                 </button>
               </div>
@@ -1163,7 +1182,7 @@ export default function LegalHelpAI() {
                            "Type or speak your legal question...")
                         : "Choose a language first..."
                     }
-                    className="w-full p-3 border border-white/30 dark:border-gray-700/30 rounded-xl resize-none bg-white/20 dark:bg-gray-700/20 backdrop-blur pr-10"
+                    className="w-full p-3 border border-white/30 dark:border-gray-700/30 rounded-xl resize-none bg-white/20 dark:bg-gray-700/20 backdrop-blur pr-12"
                     rows={2}
                     disabled={!language}
                     onKeyDown={e => {
@@ -1175,9 +1194,10 @@ export default function LegalHelpAI() {
                   />
                   {isSupported && language && (
                     <button
+                      type="button"
                       onClick={isListening ? stopListening : startListening}
                       disabled={sending}
-                      className={`absolute right-2 top-2 p-1.5 rounded-lg transition-colors ${
+                      className={`absolute right-2 top-2 p-2 rounded-lg transition-colors ${
                         isListening 
                           ? 'bg-red-500/80 backdrop-blur text-white animate-pulse' 
                           : 'bg-blue-500/80 backdrop-blur text-white hover:bg-blue-600/80'
@@ -1189,6 +1209,7 @@ export default function LegalHelpAI() {
                   )}
                 </div>
                 <button 
+                  type="button"
                   onClick={sendMessage}
                   disabled={sending || !language || !input.trim()}
                   className="px-4 py-2 bg-blue-500/80 backdrop-blur text-white rounded-xl disabled:opacity-50 hover:bg-blue-600/80 transition-colors"
@@ -1206,8 +1227,10 @@ export default function LegalHelpAI() {
         )}
       </AnimatePresence>
 
+      {/* Enhanced Chatbot Icon */}
       {!chatOpen && (
         <motion.button 
+          type="button"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setChatOpen(true)}
@@ -1220,6 +1243,7 @@ export default function LegalHelpAI() {
         </motion.button>
       )}
 
+      {/* Enhanced Footer */}
       <footer className="bg-white/5 dark:bg-gray-900/50 backdrop-blur py-12 border-t border-white/10 dark:border-gray-700/30">
         <div className="max-w-6xl mx-auto px-4 text-center">
           <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -1228,9 +1252,11 @@ export default function LegalHelpAI() {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Empowering Indians with accessible legal knowledge since 2024
           </p>
-          <div className="flex justify-center space-x-8 text-sm text-gray-500 dark:text-gray-400 mb-6">
+          <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
             <span>© 2024 LegalHelp AI</span>
+            <span>•</span>
             <span>Educational Use Only</span>
+            <span>•</span>
             <span>Made in India 🇮🇳</span>
           </div>
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 dark:bg-gray-800/10 backdrop-blur rounded-full">
