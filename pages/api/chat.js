@@ -30,12 +30,11 @@ export default async function handler(req, res) {
     const languageInstructions = {
       en: "You must always respond in English.",
       hi: "आपको हमेशा हिंदी में ही जवाब देना होगा।",
-      ta: "நீங்கள் எப்போதும் தமிழில்தான் பதிலளிக்க வேண்டும்.",
+      ta: "நீங்கள் எப்போதும் தமிழில்தான் பதிலளிக்க வேண்டும்।",
       te: "మీరు ఎల్లప్పుడూ తెలుగులోనే జవాబు చెప్పాలి.",
       bn: "আপনাকে অবশ্যই সর্বদা বাংলায় উত্তর দিতে হবে।",
       mr: "तुम्हाला नेहमी मराठीतच उत्तर द्यावे लागेल.",
       kn: "ನೀವು ಯಾವಾಗಲೂ ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಬೇಕು.",
-      // Add other languages as needed
     };
 
     const systemPrompt = `You are a Comprehensive AI Legal Advisor for Indian citizens. Your primary goal is to provide structured, accurate, and easy-to-understand legal analysis based on Indian law.
@@ -65,7 +64,6 @@ Provide a numbered list of the most crucial and immediate actions the user shoul
 - Always conclude every response with: "Disclaimer: This is for informational purposes only and not a substitute for professional legal advice. Consult with a qualified lawyer."`;
 
     // --- 4. Message Construction ---
-    // Start with the system prompt, add the conversation history, and end with the user's latest query.
     const enhancedMessages = [
       { role: "system", content: systemPrompt },
       ...messages, // Previous conversation history
@@ -76,8 +74,8 @@ Provide a numbered list of the most crucial and immediate actions the user shoul
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: enhancedMessages,
-      temperature: 0.3, // Slightly increased for better nuance in legal text
-      max_tokens: 1500, // Increased for more comprehensive answers
+      temperature: 0.3,
+      max_tokens: 1500,
     });
 
     const reply = completion.choices[0]?.message?.content?.trim() || "Sorry, I could not generate a response. Please try again.";
@@ -86,7 +84,6 @@ Provide a numbered list of the most crucial and immediate actions the user shoul
 
   } catch (err) {
     console.error("API Route Error:", err);
-    // More specific error handling
     if (err instanceof OpenAI.APIError) {
         return res.status(err.status || 500).json({ error: `OpenAI Error: ${err.name}` });
     }
