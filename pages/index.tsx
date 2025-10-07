@@ -195,23 +195,24 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 // FIXED: This component now safely handles server-side rendering.
+// Animated Background Component
 function AnimatedBackground() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // This runs only on the client, after the initial render.
     setIsClient(true);
   }, []);
 
-  // Return null on the server, and the full animation on the client.
   if (!isClient) {
     return null;
   }
-  
+
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
+      {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900"></div>
       
+      {/* Floating particles */}
       {[...Array(20)].map((_, i) => (
         <motion.div
           key={i}
@@ -232,12 +233,14 @@ function AnimatedBackground() {
         />
       ))}
       
+      {/* Geometric shapes */}
       <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-blue-400/10 to-purple-400/10 rounded-full blur-xl"></div>
       <div className="absolute bottom-20 right-20 w-48 h-48 bg-gradient-to-r from-pink-400/10 to-blue-400/10 rounded-full blur-xl"></div>
       <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-gradient-to-r from-purple-400/5 to-pink-400/5 rounded-full blur-2xl"></div>
     </div>
   );
 }
+
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
